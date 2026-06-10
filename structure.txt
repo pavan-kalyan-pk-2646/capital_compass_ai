@@ -1,0 +1,12 @@
+capital-compass-ai/
+│
+├── backend/
+│   ├── llm.py
+│   ├── risk_engine.py
+│   ├── tools.py
+│   ├── agent.py
+│
+├── frontend/
+│   ├── html,css,js files
+│
+└── test_agent.py

@@ -1,0 +1,7 @@
+.env
+.env.*
+__pycache__/
+*.pyc
+chroma.sqlite3
+chroma_compliance_db/
+backend/rag/vectorstore/

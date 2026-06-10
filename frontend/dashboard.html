@@ -1,0 +1,911 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Capital Compass AI — Dashboard</title>
+<script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/jspdf/2.5.1/jspdf.umd.min.js"></script>
+<link href="https://fonts.googleapis.com/css2?family=Playfair+Display:wght@400;700;900&family=Inter:wght@300;400;500;600&family=JetBrains+Mono:wght@400;500&display=swap" rel="stylesheet">
+<style>
+:root{
+  --bg:#080c14;
+  --surface:#0d1220;
+  --surface2:#111827;
+  --surface3:#161e2e;
+  --accent:#6366f1;
+  --accent-dim:rgba(99,102,241,0.15);
+  --accent-glow:rgba(99,102,241,0.3);
+  --gold:#f59e0b;
+  --green:#10b981;
+  --danger:#ef4444;
+  --text:#f1f5f9;
+  --text2:#94a3b8;
+  --text3:#475569;
+  --border:rgba(255,255,255,0.06);
+  --border2:rgba(255,255,255,0.1);
+  --mono:'JetBrains Mono',monospace;
+  --serif:'Playfair Display',serif;
+  --sans:'Inter',sans-serif;
+}
+*{margin:0;padding:0;box-sizing:border-box}
+body{font-family:var(--sans);background:var(--bg);color:var(--text);min-height:100vh;display:grid;grid-template-columns:240px 1fr;grid-template-rows:auto 1fr}
+
+/* ── Sidebar ── */
+.sidebar{grid-row:1/3;background:var(--surface);border-right:1px solid var(--border);display:flex;flex-direction:column;position:sticky;top:0;height:100vh;overflow-y:auto}
+.sidebar-brand{padding:28px 24px 20px;border-bottom:1px solid var(--border)}
+.sidebar-logo{display:flex;align-items:center;gap:10px;text-decoration:none;margin-bottom:4px}
+.sidebar-logo-mark{width:32px;height:32px;border-radius:8px;background:linear-gradient(135deg,var(--accent),#818cf8);display:flex;align-items:center;justify-content:center;font-size:15px;box-shadow:0 0 16px var(--accent-glow)}
+.sidebar-brand-name{font-family:var(--serif);font-size:15px;font-weight:700;color:var(--text)}
+.sidebar-brand-name em{color:var(--accent);font-style:normal}
+.sidebar-tagline{font-size:11px;color:var(--text3);font-family:var(--mono)}
+
+.sidebar-nav{flex:1;padding:20px 12px}
+.nav-label{font-size:9px;font-weight:600;text-transform:uppercase;letter-spacing:2px;color:var(--text3);padding:0 12px;margin-bottom:8px;margin-top:16px;font-family:var(--mono)}
+.nav-label:first-child{margin-top:0}
+.nav-item{display:flex;align-items:center;gap:10px;padding:10px 12px;border-radius:10px;cursor:pointer;transition:all 0.2s;font-size:13px;font-weight:500;color:var(--text2);border:1px solid transparent;width:100%;background:transparent;font-family:var(--sans);text-align:left}
+.nav-item:hover{background:rgba(255,255,255,0.04);color:var(--text)}
+.nav-item.active{background:var(--accent-dim);border-color:rgba(99,102,241,0.25);color:var(--text)}
+.nav-item-icon{font-size:15px;width:20px;text-align:center}
+.nav-item-badge{margin-left:auto;font-size:10px;font-family:var(--mono);background:rgba(99,102,241,0.2);color:#a5b4fc;padding:2px 7px;border-radius:20px}
+
+.sidebar-footer{padding:16px 12px;border-top:1px solid var(--border)}
+.sidebar-user{display:flex;align-items:center;gap:10px;padding:10px 12px;border-radius:10px;background:rgba(255,255,255,0.02);border:1px solid var(--border)}
+.sidebar-user-avatar{width:30px;height:30px;border-radius:8px;background:linear-gradient(135deg,var(--accent),#818cf8);display:flex;align-items:center;justify-content:center;font-size:13px}
+.sidebar-user-info{flex:1;min-width:0}
+.sidebar-user-name{font-size:12px;font-weight:600;color:var(--text);white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+.sidebar-user-role{font-size:10px;color:var(--text3);font-family:var(--mono)}
+.btn-logout-sm{width:26px;height:26px;border-radius:6px;background:transparent;border:1px solid var(--border);color:var(--text3);cursor:pointer;font-size:11px;transition:all 0.2s;flex-shrink:0}
+.btn-logout-sm:hover{border-color:var(--danger);color:var(--danger)}
+
+/* ── Topbar ── */
+.topbar{grid-column:2;background:rgba(8,12,20,0.85);backdrop-filter:blur(20px);border-bottom:1px solid var(--border);padding:14px 40px;display:flex;justify-content:space-between;align-items:center;position:sticky;top:0;z-index:50}
+.topbar-title{font-family:var(--serif);font-size:18px;font-weight:700;letter-spacing:-0.3px}
+.topbar-right{display:flex;align-items:center;gap:12px}
+.live-badge{display:flex;align-items:center;gap:6px;font-size:11px;font-family:var(--mono);color:var(--green);background:rgba(16,185,129,0.1);border:1px solid rgba(16,185,129,0.2);padding:5px 12px;border-radius:20px}
+.live-dot{width:5px;height:5px;border-radius:50%;background:var(--green);animation:blink 1.5s infinite}
+@keyframes blink{0%,100%{opacity:1}50%{opacity:0.2}}
+
+/* ── Main content ── */
+.main{grid-column:2;padding:36px 40px;min-height:calc(100vh - 57px);overflow-x:hidden}
+.tab-content{display:none}
+.tab-content.active{display:block;animation:fadeIn 0.3s ease}
+@keyframes fadeIn{from{opacity:0;transform:translateY(8px)}to{opacity:1;transform:translateY(0)}}
+
+/* ── Toast ── */
+.toast{position:fixed;top:24px;right:24px;background:var(--green);color:#fff;padding:12px 20px;border-radius:10px;font-size:13px;font-weight:500;z-index:999;opacity:0;transform:translateY(-10px);transition:all 0.3s;pointer-events:none;max-width:320px;box-shadow:0 8px 32px rgba(0,0,0,0.4)}
+.toast.show{opacity:1;transform:translateY(0)}
+
+/* ── Section header ── */
+.section-hdr{margin-bottom:28px}
+.section-hdr-row{display:flex;align-items:center;justify-content:space-between;flex-wrap:wrap;gap:12px}
+.section-eyebrow{font-size:10px;font-family:var(--mono);text-transform:uppercase;letter-spacing:2px;color:var(--accent);margin-bottom:6px}
+.section-title{font-family:var(--serif);font-size:22px;font-weight:700;letter-spacing:-0.3px}
+
+/* ── Input card ── */
+.input-card{background:var(--surface);border:1px solid var(--border);border-radius:20px;padding:28px;margin-bottom:28px}
+.input-card-title{font-family:var(--serif);font-size:16px;font-weight:700;margin-bottom:20px;color:var(--text)}
+.input-grid{display:grid;grid-template-columns:repeat(auto-fit,minmax(150px,1fr));gap:14px;margin-bottom:22px}
+.input-group{display:flex;flex-direction:column;gap:6px}
+.input-label{font-size:10px;font-weight:600;text-transform:uppercase;letter-spacing:1.5px;color:var(--text3);font-family:var(--mono)}
+.input-field{padding:11px 14px;background:rgba(255,255,255,0.04);border:1px solid var(--border);border-radius:10px;color:var(--text);font-size:14px;font-family:var(--sans);transition:all 0.2s;outline:none}
+.input-field:focus{border-color:var(--accent);background:rgba(99,102,241,0.05);box-shadow:0 0 0 3px rgba(99,102,241,0.1)}
+.input-field::placeholder{color:var(--text3)}
+.input-field.invalid{border-color:var(--danger);background:rgba(239,68,68,0.04)}
+.field-error{font-size:11px;color:var(--danger);margin-top:2px;display:none}
+.input-field.invalid ~ .field-error{display:block}
+.btn-generate{padding:12px 28px;background:linear-gradient(135deg,var(--accent),#4f46e5);border:none;border-radius:10px;color:#fff;font-size:14px;font-weight:600;font-family:var(--sans);cursor:pointer;transition:all 0.3s;display:flex;align-items:center;gap:8px;box-shadow:0 0 24px var(--accent-glow)}
+.btn-generate:hover:not(:disabled){transform:translateY(-2px);box-shadow:0 0 40px var(--accent-glow)}
+.btn-generate:disabled{opacity:0.5;cursor:not-allowed;transform:none}
+.spin{display:none;width:15px;height:15px;border:2px solid rgba(255,255,255,0.3);border-top-color:#fff;border-radius:50%;animation:spin 0.8s linear infinite}
+@keyframes spin{to{transform:rotate(360deg)}}
+
+/* ── Progress panel ── */
+.progress-panel{background:var(--surface);border:1px solid var(--border);border-radius:20px;padding:24px;margin-bottom:28px;display:none}
+.progress-panel.active{display:block}
+.progress-panel-title{font-size:10px;font-family:var(--mono);text-transform:uppercase;letter-spacing:2px;color:var(--text3);margin-bottom:18px}
+.progress-steps{display:flex;flex-direction:column;gap:8px}
+.progress-step{display:flex;align-items:center;gap:12px;padding:9px 14px;border-radius:10px;background:rgba(255,255,255,0.02);border:1px solid transparent;transition:all 0.3s;font-size:12px;color:var(--text3);font-family:var(--mono)}
+.progress-step.running{border-color:rgba(99,102,241,0.25);background:rgba(99,102,241,0.07);color:var(--text)}
+.progress-step.done{border-color:rgba(16,185,129,0.2);background:rgba(16,185,129,0.05);color:var(--green)}
+.step-icon{width:22px;height:22px;border-radius:6px;background:rgba(255,255,255,0.04);display:flex;align-items:center;justify-content:center;font-size:11px;flex-shrink:0}
+.progress-step.running .step-icon{background:rgba(99,102,241,0.15)}
+.progress-step.done .step-icon{background:rgba(16,185,129,0.15)}
+.step-spinner{width:11px;height:11px;border:2px solid rgba(99,102,241,0.3);border-top-color:var(--accent);border-radius:50%;animation:spin 0.8s linear infinite}
+.progress-bar-wrap{margin-top:16px;height:3px;background:rgba(255,255,255,0.05);border-radius:2px;overflow:hidden}
+.progress-bar-fill{height:100%;background:linear-gradient(90deg,var(--accent),var(--green));border-radius:2px;width:0%;transition:width 0.5s ease}
+
+/* ── Pipeline card ── */
+.pipeline-card{background:var(--surface);border:1px solid var(--border);border-radius:20px;padding:24px;margin-bottom:28px}
+.pipeline-card-title{font-size:10px;font-family:var(--mono);text-transform:uppercase;letter-spacing:2px;color:var(--text3);margin-bottom:20px}
+.pipeline{display:flex;align-items:center;flex-wrap:wrap;gap:4px}
+.pipeline-step{display:flex;flex-direction:column;align-items:center;gap:6px}
+.step-node{width:48px;height:48px;border-radius:12px;border:1px solid var(--border);background:rgba(255,255,255,0.02);display:flex;align-items:center;justify-content:center;font-size:18px;transition:all 0.3s}
+.step-node.active{border-color:var(--accent);background:rgba(99,102,241,0.12);box-shadow:0 0 16px var(--accent-glow)}
+.step-node.done{border-color:var(--green);background:rgba(16,185,129,0.1)}
+.step-label{font-size:9px;font-family:var(--mono);text-transform:uppercase;letter-spacing:0.5px;color:var(--text3);text-align:center;max-width:54px}
+.pipeline-arr{color:var(--border2);font-size:14px;padding-bottom:18px}
+
+/* ── Results ── */
+.results{display:none}
+
+/* Metrics row */
+.metrics-row{display:grid;grid-template-columns:repeat(auto-fit,minmax(180px,1fr));gap:14px;margin-bottom:24px}
+.metric-card{background:var(--surface);border:1px solid var(--border);border-radius:16px;padding:20px;position:relative;overflow:hidden;transition:all 0.2s}
+.metric-card::before{content:'';position:absolute;top:0;left:0;right:0;height:2px;opacity:0;transition:opacity 0.3s}
+.metric-card.mc-blue::before{background:linear-gradient(90deg,transparent,var(--accent),transparent)}
+.metric-card.mc-green::before{background:linear-gradient(90deg,transparent,var(--green),transparent)}
+.metric-card.mc-danger::before{background:linear-gradient(90deg,transparent,var(--danger),transparent)}
+.metric-card:hover{border-color:var(--border2);transform:translateY(-2px)}
+.metric-card:hover::before{opacity:1}
+.metric-lbl{font-size:10px;font-family:var(--mono);text-transform:uppercase;letter-spacing:1.5px;color:var(--text3);margin-bottom:10px}
+.metric-val{font-family:var(--serif);font-size:28px;font-weight:900;letter-spacing:-1px}
+.metric-sub{font-size:11px;color:var(--text3);margin-top:6px;font-family:var(--mono)}
+
+/* Charts row */
+.charts-row{display:grid;grid-template-columns:1fr 1.6fr;gap:16px;margin-bottom:24px}
+.chart-card{background:var(--surface);border:1px solid var(--border);border-radius:16px;padding:24px}
+.chart-card-title{font-size:10px;font-family:var(--mono);text-transform:uppercase;letter-spacing:2px;color:var(--text3);margin-bottom:20px}
+.chart-wrap{height:260px;display:flex;align-items:center;justify-content:center}
+
+/* Compliance */
+.compliance-card{background:var(--surface);border:1px solid var(--border);border-radius:16px;padding:24px;margin-bottom:16px}
+.card-title-row{display:flex;align-items:center;justify-content:space-between;margin-bottom:16px}
+.card-title{font-size:10px;font-family:var(--mono);text-transform:uppercase;letter-spacing:2px;color:var(--text3)}
+.compliance-status{display:inline-flex;align-items:center;gap:8px;padding:5px 14px;border-radius:20px;font-size:12px;font-weight:600;font-family:var(--mono)}
+.status-compliant{background:rgba(16,185,129,0.1);color:var(--green);border:1px solid rgba(16,185,129,0.2)}
+.status-noncompliant{background:rgba(239,68,68,0.1);color:var(--danger);border:1px solid rgba(239,68,68,0.2)}
+.compliance-text{font-size:13px;color:var(--text2);line-height:1.7;white-space:pre-wrap;margin-top:12px}
+
+/* Explanation */
+.explanation-card{background:var(--surface);border:1px solid var(--border);border-radius:16px;padding:24px;margin-bottom:16px}
+.action-btns{display:flex;gap:8px;flex-wrap:wrap}
+.btn-copy,.btn-pdf{padding:6px 14px;border-radius:8px;font-size:11px;font-weight:500;cursor:pointer;font-family:var(--mono);transition:all 0.2s;display:flex;align-items:center;gap:5px}
+.btn-copy{background:rgba(99,102,241,0.08);border:1px solid rgba(99,102,241,0.2);color:#a5b4fc}
+.btn-copy:hover{background:rgba(99,102,241,0.15)}
+.btn-pdf{background:rgba(245,158,11,0.08);border:1px solid rgba(245,158,11,0.2);color:var(--gold)}
+.btn-pdf:hover{background:rgba(245,158,11,0.15)}
+.btn-pdf:disabled{opacity:0.5;cursor:not-allowed}
+#explanationText{font-size:14px;line-height:1.8;color:var(--text2);margin-top:12px}
+
+/* Logs */
+.logs-card{background:var(--surface);border:1px solid var(--border);border-radius:16px;padding:24px;margin-bottom:28px}
+.logs-list{display:flex;flex-direction:column;gap:6px;max-height:300px;overflow-y:auto;margin-top:16px}
+.log-item{display:flex;align-items:flex-start;gap:10px;padding:10px 14px;background:rgba(255,255,255,0.02);border-radius:8px;border-left:2px solid var(--accent);font-size:11px;font-family:var(--mono);color:var(--text2);opacity:0;transform:translateX(-8px);animation:slideIn 0.3s forwards}
+@keyframes slideIn{to{opacity:1;transform:translateX(0)}}
+.log-item:hover{background:rgba(99,102,241,0.05);color:var(--text)}
+.log-num{font-size:10px;color:var(--text3);min-width:20px}
+
+/* ── History ── */
+.history-toolbar{display:flex;justify-content:space-between;align-items:center;margin-bottom:24px;flex-wrap:wrap;gap:12px}
+.history-count{font-size:12px;color:var(--text3);font-family:var(--mono)}
+.history-count span{color:var(--green);font-weight:600}
+.history-loading{text-align:center;padding:60px;color:var(--text3);font-size:13px;font-family:var(--mono);display:none}
+.history-error{padding:28px;background:rgba(239,68,68,0.05);border:1px solid rgba(239,68,68,0.15);border-radius:14px;color:var(--danger);font-size:13px;display:none;text-align:center}
+.history-empty{text-align:center;padding:80px 40px}
+.history-empty .ei{font-size:44px;margin-bottom:14px;opacity:0.3}
+.history-empty p{color:var(--text3);font-size:14px}
+.history-empty a{color:var(--accent);cursor:pointer;text-decoration:underline}
+.history-list{display:flex;flex-direction:column;gap:14px}
+
+.hcard{background:var(--surface);border:1px solid var(--border);border-radius:16px;padding:24px;transition:all 0.2s;position:relative;overflow:hidden}
+.hcard::before{content:'';position:absolute;top:0;left:0;bottom:0;width:2px;background:var(--accent)}
+.hcard:hover{border-color:rgba(99,102,241,0.2);transform:translateY(-2px);box-shadow:0 10px 40px rgba(0,0,0,0.3)}
+.hcard-top{display:flex;justify-content:space-between;align-items:flex-start;margin-bottom:16px;flex-wrap:wrap;gap:10px}
+.hcard-meta{display:flex;flex-direction:column;gap:3px}
+.hcard-date{font-size:11px;color:var(--text3);font-family:var(--mono)}
+.hcard-id{font-size:10px;color:var(--text3);font-family:var(--mono);opacity:0.5}
+.hcard-badges{display:flex;gap:7px;align-items:center;flex-wrap:wrap}
+.rbadge{padding:4px 12px;border-radius:20px;font-size:11px;font-weight:700;font-family:var(--mono)}
+.rh{background:rgba(239,68,68,0.1);color:#fca5a5;border:1px solid rgba(239,68,68,0.2)}
+.rm{background:rgba(245,158,11,0.1);color:#fcd34d;border:1px solid rgba(245,158,11,0.2)}
+.rl{background:rgba(16,185,129,0.1);color:#6ee7b7;border:1px solid rgba(16,185,129,0.2)}
+.cbadge{padding:4px 12px;border-radius:20px;font-size:10px;font-weight:600;font-family:var(--mono)}
+.cbc{background:rgba(16,185,129,0.08);color:var(--green);border:1px solid rgba(16,185,129,0.15)}
+.cbn{background:rgba(239,68,68,0.08);color:var(--danger);border:1px solid rgba(239,68,68,0.15)}
+.halloc{display:flex;gap:6px;margin-bottom:16px;flex-wrap:wrap}
+.apill{padding:4px 12px;border-radius:20px;font-size:11px;font-weight:600;font-family:var(--mono)}
+.as{background:rgba(99,102,241,0.1);color:#a5b4fc;border:1px solid rgba(99,102,241,0.15)}
+.ab{background:rgba(16,185,129,0.1);color:var(--green);border:1px solid rgba(16,185,129,0.15)}
+.ac{background:rgba(245,158,11,0.1);color:var(--gold);border:1px solid rgba(245,158,11,0.15)}
+.hgrid{display:grid;grid-template-columns:repeat(auto-fit,minmax(130px,1fr));gap:10px;margin-bottom:16px}
+.hstat{background:rgba(255,255,255,0.02);border:1px solid var(--border);border-radius:10px;padding:12px 14px}
+.hstat-lbl{font-size:9px;text-transform:uppercase;letter-spacing:1px;color:var(--text3);font-family:var(--mono);margin-bottom:5px}
+.hstat-val{font-size:16px;font-weight:700;font-family:var(--mono);letter-spacing:-0.5px}
+.hactions{display:flex;gap:8px;flex-wrap:wrap}
+.btn-exp{padding:7px 14px;background:rgba(99,102,241,0.07);border:1px solid rgba(99,102,241,0.15);border-radius:8px;color:#a5b4fc;font-size:11px;font-weight:500;cursor:pointer;font-family:var(--mono);transition:all 0.2s}
+.btn-exp:hover{background:rgba(99,102,241,0.14)}
+.btn-del{padding:7px 14px;background:rgba(239,68,68,0.05);border:1px solid rgba(239,68,68,0.12);border-radius:8px;color:var(--danger);font-size:11px;font-weight:500;cursor:pointer;font-family:var(--mono);transition:all 0.2s}
+.btn-del:hover{background:rgba(239,68,68,0.1)}
+.btn-del-confirm{padding:7px 14px;background:rgba(239,68,68,0.18);border:1px solid rgba(239,68,68,0.3);border-radius:8px;color:#fca5a5;font-size:11px;font-weight:600;cursor:pointer;font-family:var(--mono);animation:pulse-r 0.3s ease}
+@keyframes pulse-r{from{transform:scale(0.96)}to{transform:scale(1)}}
+.hdetail{display:none;margin-top:18px;padding-top:18px;border-top:1px solid var(--border)}
+.hdetail.open{display:block}
+.hdetail p{font-size:13px;color:var(--text2);line-height:1.7}
+.dlbl{font-size:9px;text-transform:uppercase;letter-spacing:1.5px;color:var(--text3);font-family:var(--mono);margin-bottom:6px;margin-top:14px}
+
+/* ── Automation ── */
+.auto-grid{display:grid;grid-template-columns:repeat(auto-fit,minmax(260px,1fr));gap:14px}
+.auto-item{background:var(--surface);border:1px solid var(--border);border-radius:16px;padding:22px;display:flex;gap:14px;align-items:flex-start;transition:all 0.2s}
+.auto-item:hover{border-color:rgba(99,102,241,0.2);background:rgba(99,102,241,0.03)}
+.auto-icon{width:40px;height:40px;border-radius:10px;display:flex;align-items:center;justify-content:center;font-size:18px;flex-shrink:0}
+.auto-info .auto-title{font-size:13px;font-weight:600;color:var(--text);margin-bottom:5px}
+.auto-info .auto-desc{font-size:12px;color:var(--text3);line-height:1.55}
+.auto-badge{font-size:9px;font-family:var(--mono);font-weight:600;padding:2px 8px;border-radius:4px;margin-top:8px;display:inline-block;letter-spacing:0.5px}
+.ba{background:rgba(16,185,129,0.12);color:var(--green)}
+.bs{background:rgba(99,102,241,0.12);color:#a5b4fc}
+.bl{background:rgba(245,158,11,0.12);color:var(--gold)}
+
+/* ── Scrollbar ── */
+::-webkit-scrollbar{width:4px;height:4px}
+::-webkit-scrollbar-thumb{background:rgba(255,255,255,0.08);border-radius:2px}
+
+/* ── Responsive ── */
+@media(max-width:900px){
+  body{grid-template-columns:1fr;grid-template-rows:auto auto 1fr}
+  .sidebar{grid-row:auto;height:auto;position:relative;flex-direction:row;align-items:center;flex-wrap:wrap;border-right:none;border-bottom:1px solid var(--border)}
+  .sidebar-brand{border-bottom:none;padding:16px 20px}
+  .sidebar-nav{display:flex;flex-direction:row;gap:4px;padding:8px 12px;overflow-x:auto;flex:1}
+  .nav-label{display:none}
+  .sidebar-footer{display:none}
+  .topbar{grid-column:1}
+  .main{grid-column:1;padding:24px 20px}
+  .charts-row{grid-template-columns:1fr}
+}
+</style>
+</head>
+<body>
+
+<div class="toast" id="toast"></div>
+
+<!-- ── Sidebar ── -->
+<aside class="sidebar">
+  <div class="sidebar-brand">
+    <a href="index.html" class="sidebar-logo">
+      <div class="sidebar-logo-mark">◆</div>
+      <span class="sidebar-brand-name">Capital <em>Compass</em></span>
+    </a>
+    <div class="sidebar-tagline">// autonomous portfolio AI</div>
+  </div>
+
+  <nav class="sidebar-nav">
+    <div class="nav-label">Portfolio</div>
+    <button class="nav-item active" id="nav-generate" onclick="switchTab('generate',this)">
+      <span class="nav-item-icon">⚡</span> Generate
+    </button>
+    <button class="nav-item" id="nav-history" onclick="switchTab('history',this)">
+      <span class="nav-item-icon">📋</span> History
+    </button>
+
+    <div class="nav-label">System</div>
+    <button class="nav-item" id="nav-automation" onclick="switchTab('automation',this)">
+      <span class="nav-item-icon">🤖</span> Automation
+      <span class="nav-item-badge">9</span>
+    </button>
+  </nav>
+
+  <div class="sidebar-footer">
+    <div class="sidebar-user">
+      <div class="sidebar-user-avatar">👤</div>
+      <div class="sidebar-user-info">
+        <div class="sidebar-user-name">Investor</div>
+        <div class="sidebar-user-role">// active session</div>
+      </div>
+      <button class="btn-logout-sm" onclick="logout()" title="Sign Out">↩</button>
+    </div>
+  </div>
+</aside>
+
+<!-- ── Topbar ── -->
+<header class="topbar">
+  <span class="topbar-title" id="topbarTitle">Generate Portfolio</span>
+  <div class="topbar-right">
+    <div class="live-badge"><span class="live-dot"></span>LIVE MARKET DATA</div>
+  </div>
+</header>
+
+<!-- ── Main ── -->
+<main class="main">
+
+<!-- TAB: GENERATE -->
+<div id="tab-generate" class="tab-content active">
+
+  <div class="section-hdr">
+    <div class="section-eyebrow">// investor profile</div>
+    <div class="section-title">Portfolio Analysis</div>
+  </div>
+
+  <div class="input-card">
+    <div class="input-card-title">Enter your details</div>
+    <div class="input-grid">
+      <div class="input-group">
+        <label class="input-label">Age</label>
+        <input class="input-field" type="number" id="age" placeholder="e.g. 30" min="18" max="100">
+        <span class="field-error">Enter a valid age (18–100)</span>
+      </div>
+      <div class="input-group">
+        <label class="input-label">Annual Income (₹)</label>
+        <input class="input-field" type="number" id="income" placeholder="e.g. 500000" min="1">
+        <span class="field-error">Enter a valid income</span>
+      </div>
+      <div class="input-group">
+        <label class="input-label">Horizon (Years)</label>
+        <input class="input-field" type="number" id="years" placeholder="e.g. 10" min="1" max="50">
+        <span class="field-error">Enter 1–50 years</span>
+      </div>
+      <div class="input-group">
+        <label class="input-label">Risk Tolerance (1–10)</label>
+        <input class="input-field" type="number" id="loss" placeholder="e.g. 6" min="1" max="10">
+        <span class="field-error">Enter a value from 1 to 10</span>
+      </div>
+      <div class="input-group">
+        <label class="input-label">Investment Amount (₹)</label>
+        <input class="input-field" type="number" id="amount" placeholder="e.g. 100000" min="1">
+        <span class="field-error">Enter a valid amount</span>
+      </div>
+    </div>
+    <button class="btn-generate" onclick="generate()" id="generateBtn">
+      <div class="spin" id="loader"></div>
+      <span id="btnText">Run Portfolio Analysis →</span>
+    </button>
+  </div>
+
+  <!-- Progress panel -->
+  <div class="progress-panel" id="progressPanel">
+    <div class="progress-panel-title">// live agent pipeline</div>
+    <div class="progress-steps" id="progressSteps"></div>
+    <div class="progress-bar-wrap"><div class="progress-bar-fill" id="progressBar"></div></div>
+  </div>
+
+  <!-- Pipeline visualiser -->
+  <div class="pipeline-card">
+    <div class="pipeline-card-title">// langgraph multi-agent flow</div>
+    <div class="pipeline">
+      <div class="pipeline-step"><div class="step-node" id="node-profile">👤</div><div class="step-label">Profile</div></div>
+      <div class="pipeline-arr">→</div>
+      <div class="pipeline-step"><div class="step-node" id="node-tool">🛠️</div><div class="step-label">Tool Agent</div></div>
+      <div class="pipeline-arr">→</div>
+      <div class="pipeline-step"><div class="step-node" id="node-strategy">📊</div><div class="step-label">Strategy</div></div>
+      <div class="pipeline-arr">→</div>
+      <div class="pipeline-step"><div class="step-node" id="node-live">📡</div><div class="step-label">Live Data</div></div>
+      <div class="pipeline-arr">→</div>
+      <div class="pipeline-step"><div class="step-node" id="node-simulation">🎲</div><div class="step-label">Simulation</div></div>
+      <div class="pipeline-arr">→</div>
+      <div class="pipeline-step"><div class="step-node" id="node-compliance">⚖️</div><div class="step-label">Compliance</div></div>
+      <div class="pipeline-arr">→</div>
+      <div class="pipeline-step"><div class="step-node" id="node-critic">🔁</div><div class="step-label">Critic</div></div>
+      <div class="pipeline-arr">→</div>
+      <div class="pipeline-step"><div class="step-node" id="node-explanation">💬</div><div class="step-label">Explanation</div></div>
+    </div>
+  </div>
+
+  <!-- Results -->
+  <div id="results" class="results">
+
+    <div class="section-hdr" style="margin-top:8px">
+      <div class="section-eyebrow">// portfolio results</div>
+      <div class="section-title">Analysis Complete</div>
+    </div>
+
+    <div class="metrics-row">
+      <div class="metric-card mc-blue">
+        <div class="metric-lbl">Risk Score</div>
+        <div class="metric-val" id="riskVal" style="color:var(--accent)">—</div>
+        <div class="metric-sub" id="riskLabel">Awaiting analysis</div>
+      </div>
+      <div class="metric-card mc-green">
+        <div class="metric-lbl">Expected Value</div>
+        <div class="metric-val" id="expectedVal" style="color:var(--green)">—</div>
+        <div class="metric-sub">Monte Carlo mean</div>
+      </div>
+      <div class="metric-card mc-danger">
+        <div class="metric-lbl">Worst 5% Case</div>
+        <div class="metric-val" id="worstVal" style="color:var(--danger)">—</div>
+        <div class="metric-sub">5th percentile</div>
+      </div>
+      <div class="metric-card mc-green">
+        <div class="metric-lbl">Best 5% Case</div>
+        <div class="metric-val" id="bestVal" style="color:var(--green)">—</div>
+        <div class="metric-sub">95th percentile</div>
+      </div>
+    </div>
+
+    <div class="charts-row">
+      <div class="chart-card">
+        <div class="chart-card-title">// asset allocation</div>
+        <div class="chart-wrap"><canvas id="allocationChart"></canvas></div>
+      </div>
+      <div class="chart-card">
+        <div class="chart-card-title">// monte carlo stress test</div>
+        <div class="chart-wrap"><canvas id="stressChart"></canvas></div>
+      </div>
+    </div>
+
+    <div class="compliance-card">
+      <div class="card-title-row">
+        <div class="card-title">// compliance review</div>
+        <div id="complianceStatus" class="compliance-status status-compliant">✓ Compliant</div>
+      </div>
+      <div id="complianceText" class="compliance-text"></div>
+    </div>
+
+    <div class="explanation-card">
+      <div class="card-title-row">
+        <div class="card-title">// ai explanation</div>
+        <div class="action-btns">
+          <button class="btn-copy" onclick="copyResults()">📋 Copy</button>
+          <button class="btn-pdf" id="pdfBtn" onclick="exportPDF()">⬇️ Export PDF</button>
+        </div>
+      </div>
+      <div id="explanationText"></div>
+    </div>
+
+    <div class="logs-card">
+      <div class="card-title">// agent execution logs</div>
+      <div class="logs-list" id="logsList"></div>
+    </div>
+
+  </div>
+</div>
+
+<!-- TAB: HISTORY -->
+<div id="tab-history" class="tab-content">
+  <div class="section-hdr">
+    <div class="section-eyebrow">// saved portfolios</div>
+    <div class="section-title">Portfolio History</div>
+  </div>
+  <div class="history-toolbar">
+    <div class="history-count">Total: <span id="historyCount">0</span> portfolios</div>
+  </div>
+  <div id="historyLoading" class="history-loading">⏳ Loading portfolios…</div>
+  <div id="historyError" class="history-error">Failed to load history. Please try again.</div>
+  <div id="historyEmpty" class="history-empty" style="display:none">
+    <div class="ei">📋</div>
+    <p>No portfolios yet. <a onclick="switchTab('generate',document.getElementById('nav-generate'))">Generate your first one →</a></p>
+  </div>
+  <div id="historyList" class="history-list"></div>
+</div>
+
+<!-- TAB: AUTOMATION -->
+<div id="tab-automation" class="tab-content">
+  <div class="section-hdr">
+    <div class="section-eyebrow">// active systems</div>
+    <div class="section-title">Automation Engine</div>
+  </div>
+  <div class="auto-grid">
+    <div class="auto-item"><div class="auto-icon" style="background:rgba(99,102,241,0.1)">🛠️</div><div class="auto-info"><div class="auto-title">Tool Calling Agent</div><div class="auto-desc">LLM uses bind_tools() to autonomously decide which tools to call without a fixed order.</div><span class="auto-badge bs">LangChain bind_tools</span></div></div>
+    <div class="auto-item"><div class="auto-icon" style="background:rgba(99,102,241,0.1)">📡</div><div class="auto-info"><div class="auto-title">Live Market Data</div><div class="auto-desc">Fetches real-time NIFTY 50 annual return via Yahoo Finance. Falls back to historical CSV.</div><span class="auto-badge bl">yfinance · live</span></div></div>
+    <div class="auto-item"><div class="auto-icon" style="background:rgba(16,185,129,0.1)">🔁</div><div class="auto-info"><div class="auto-title">Auto Critic Re-Allocation</div><div class="auto-desc">Re-runs strategy up to 3 times if risk score and allocation are misaligned.</div><span class="auto-badge ba">Max 3 retries</span></div></div>
+    <div class="auto-item"><div class="auto-icon" style="background:rgba(245,158,11,0.1)">🗓️</div><div class="auto-info"><div class="auto-title">Scheduled Rebalancing</div><div class="auto-desc">APScheduler re-runs LangGraph for all users every 30 days automatically.</div><span class="auto-badge bs">Every 30 days</span></div></div>
+    <div class="auto-item"><div class="auto-icon" style="background:rgba(99,102,241,0.1)">⚖️</div><div class="auto-info"><div class="auto-title">RAG Compliance Validation</div><div class="auto-desc">ChromaDB retrieves regulatory guidelines. LLM validates every portfolio before finalising.</div><span class="auto-badge ba">ChromaDB RAG</span></div></div>
+    <div class="auto-item"><div class="auto-icon" style="background:rgba(239,68,68,0.1)">💾</div><div class="auto-info"><div class="auto-title">Auto Portfolio Save</div><div class="auto-desc">Every generated portfolio is saved to SQLite with stress test, explanation, compliance, and timestamp.</div><span class="auto-badge ba">SQLite full save</span></div></div>
+    <div class="auto-item"><div class="auto-icon" style="background:rgba(16,185,129,0.1)">🎲</div><div class="auto-info"><div class="auto-title">Monte Carlo (1,000 runs)</div><div class="auto-desc">Runs 1,000 simulations using live + historical returns for all outcome statistics.</div><span class="auto-badge ba">1,000 iterations</span></div></div>
+    <div class="auto-item"><div class="auto-icon" style="background:rgba(245,158,11,0.1)">📄</div><div class="auto-info"><div class="auto-title">PDF Export</div><div class="auto-desc">Downloads a full portfolio report — risk, allocation, stress test, compliance, explanation.</div><span class="auto-badge bl">jsPDF · pure text</span></div></div>
+    <div class="auto-item"><div class="auto-icon" style="background:rgba(99,102,241,0.1)">⚡</div><div class="auto-info"><div class="auto-title">Real-time SSE Progress</div><div class="auto-desc">Live agent-by-agent updates streamed to the dashboard via Server-Sent Events.</div><span class="auto-badge ba">SSE streaming</span></div></div>
+  </div>
+</div>
+
+</main>
+
+<script>
+// ── Tab switcher with topbar title update ─────────────────────────────
+const TAB_TITLES = { generate:'Generate Portfolio', history:'Portfolio History', automation:'Automation Engine' };
+function switchTab(name, el) {
+  document.querySelectorAll('.tab-content').forEach(t => t.classList.remove('active'));
+  document.querySelectorAll('.nav-item').forEach(b => b.classList.remove('active'));
+  document.getElementById('tab-' + name).classList.add('active');
+  if (el) el.classList.add('active');
+  document.getElementById('topbarTitle').textContent = TAB_TITLES[name] || name;
+  if (name === 'history') loadHistory();
+}
+
+// ── Auth guard ─────────────────────────────────────────────────────────────────
+(async function authGuard() {
+  try {
+    const res = await fetch("/api/login-check");
+    if (!res.ok) location.href = "login.html";
+  } catch(e) { location.href = "login.html"; }
+})();
+
+// ── XSS escaper ───────────────────────────────────────────────────────
+function esc(str) {
+  return String(str ?? '')
+    .replace(/&/g,'&amp;').replace(/</g,'&lt;')
+    .replace(/>/g,'&gt;').replace(/"/g,'&quot;').replace(/'/g,'&#39;');
+}
+
+// ── Toast ──────────────────────────────────────────────────────────────
+function showToast(msg, color='#10b981') {
+  const t = document.getElementById('toast');
+  t.textContent = msg; t.style.background = color;
+  t.classList.add('show');
+  setTimeout(() => t.classList.remove('show'), 3000);
+}
+
+let allocationChart, stressChart, lastResult = null;
+
+async function logout() {
+  await fetch("/api/logout", { method:"POST" });
+  location.href = "index.html";
+}
+
+function animatePipeline() {
+  const nodes = ['profile','tool','strategy','live','simulation','compliance','critic','explanation'];
+  nodes.forEach((n,i) => {
+    setTimeout(() => {
+      const el = document.getElementById('node-' + n);
+      if (!el) return;
+      el.classList.remove('done'); el.classList.add('active');
+      setTimeout(() => { el.classList.remove('active'); el.classList.add('done'); }, 600);
+    }, i * 350);
+  });
+}
+function resetPipeline() {
+  ['profile','tool','strategy','live','simulation','compliance','critic','explanation'].forEach(n => {
+    const el = document.getElementById('node-' + n);
+    if (el) el.classList.remove('active','done');
+  });
+}
+
+// ── Input validation ──────────────────────────────────────────────────
+function validateInputs() {
+  const rules = {
+    age:    { min:18,  max:100 },
+    income: { min:1,   max:null },
+    years:  { min:1,   max:50 },
+    loss:   { min:1,   max:10 },
+    amount: { min:1,   max:null }
+  };
+  let valid = true;
+  for (const [id, rule] of Object.entries(rules)) {
+    const input = document.getElementById(id);
+    const val = parseFloat(input.value);
+    const ok = !isNaN(val) && val >= rule.min && (rule.max === null || val <= rule.max);
+    input.classList.toggle('invalid', !ok);
+    if (!ok) valid = false;
+  }
+  return valid;
+}
+
+// ── SSE progress ───────────────────────────────────────────────────────
+const AGENT_ORDER = ['profile','tool_agent','strategy','live_data','simulation','compliance','critic','explanation'];
+const TOTAL_AGENTS = AGENT_ORDER.length;
+let completedAgents = 0;
+
+function initProgressPanel() {
+  completedAgents = 0;
+  const panel = document.getElementById('progressPanel');
+  const steps  = document.getElementById('progressSteps');
+  const bar    = document.getElementById('progressBar');
+  panel.classList.add('active');
+  steps.innerHTML = '';
+  bar.style.width = '0%';
+  AGENT_ORDER.forEach(agent => {
+    const row = document.createElement('div');
+    row.className = 'progress-step';
+    row.id = 'pstep-' + agent;
+    row.innerHTML = `<div class="step-icon">⏳</div><span>${agent.replace(/_/g,' ').replace(/\b\w/g,c=>c.toUpperCase())}</span>`;
+    steps.appendChild(row);
+  });
+}
+
+function markAgentRunning(agentName) {
+  const row = document.getElementById('pstep-' + agentName);
+  if (!row) return;
+  row.className = 'progress-step running';
+  row.querySelector('.step-icon').innerHTML = '<div class="step-spinner"></div>';
+}
+
+function markAgentDone(agentName, message) {
+  const row = document.getElementById('pstep-' + agentName);
+  if (!row) return;
+  row.className = 'progress-step done';
+  row.querySelector('.step-icon').textContent = '✓';
+  row.querySelector('span').textContent = message || agentName;
+  completedAgents++;
+  document.getElementById('progressBar').style.width = Math.round((completedAgents / TOTAL_AGENTS) * 100) + '%';
+}
+
+const NODE_MAP = {
+  'profile':'profile','tool_agent':'tool','strategy':'strategy','live_data':'live',
+  'simulation':'simulation','compliance':'compliance','critic':'critic','explanation':'explanation'
+};
+
+// ── Generate (SSE) ────────────────────────────────────────────────────
+async function generate() {
+  if (!validateInputs()) { showToast('Please fix the highlighted fields', '#ef4444'); return; }
+
+  const btn = document.getElementById('generateBtn');
+  const loader = document.getElementById('loader');
+  const btnText = document.getElementById('btnText');
+  btn.disabled = true; loader.style.display = 'block'; btnText.textContent = 'Analyzing…';
+  resetPipeline(); initProgressPanel();
+
+  const payload = {
+    age:    +document.getElementById('age').value,
+    income: +document.getElementById('income').value,
+    years:  +document.getElementById('years').value,
+    loss:   +document.getElementById('loss').value,
+    amount: +document.getElementById('amount').value
+  };
+
+  try {
+    const res = await fetch("/api/generate/stream", {
+      method:"POST", headers:{"Content-Type":"application/json"}, body:JSON.stringify(payload)
+    });
+    if (!res.ok) { const err = await res.json(); throw new Error(err.error || "Backend error"); }
+
+    const reader = res.body.getReader();
+    const decoder = new TextDecoder();
+    let buffer = '';
+
+    while (true) {
+      const { done, value } = await reader.read();
+      if (done) break;
+      buffer += decoder.decode(value, { stream: true });
+      const parts = buffer.split('\n\n');
+      buffer = parts.pop();
+
+      for (const part of parts) {
+        if (!part.trim()) continue;
+        const eventLine = part.match(/^event:\s*(.+)$/m);
+        const dataLine  = part.match(/^data:\s*(.+)$/m);
+        if (!eventLine || !dataLine) continue;
+        const eventType = eventLine[1].trim();
+        let pl;
+        try { pl = JSON.parse(dataLine[1]); } catch { continue; }
+
+        if (eventType === 'progress') {
+          const agent = pl.agent;
+          const idx = AGENT_ORDER.indexOf(agent);
+          if (idx > 0) markAgentDone(AGENT_ORDER[idx - 1], pl.message);
+          markAgentRunning(agent);
+          const nodeId = NODE_MAP[agent];
+          if (nodeId) {
+            const nodeEl = document.getElementById('node-' + nodeId);
+            if (nodeEl) { nodeEl.classList.remove('done'); nodeEl.classList.add('active'); }
+          }
+        } else if (eventType === 'result') {
+          markAgentDone(AGENT_ORDER[AGENT_ORDER.length - 1], '✓ Explanation Agent — complete');
+          document.getElementById('progressBar').style.width = '100%';
+          Object.values(NODE_MAP).forEach(nid => {
+            const el = document.getElementById('node-' + nid);
+            if (el) { el.classList.remove('active'); el.classList.add('done'); }
+          });
+          lastResult = pl;
+          renderResults(pl);
+          showToast('✓ Portfolio analysis complete!');
+        } else if (eventType === 'error') {
+          throw new Error(pl.message || 'Pipeline error');
+        }
+      }
+    }
+  } catch(e) {
+    showToast('Error: ' + e.message, '#ef4444');
+    resetPipeline();
+    document.getElementById('progressPanel').classList.remove('active');
+  }
+
+  btn.disabled = false; loader.style.display = 'none'; btnText.textContent = 'Run Portfolio Analysis →';
+}
+
+// ── Render results ────────────────────────────────────────────────────
+function renderResults(data) {
+  const section = document.getElementById('results');
+  section.style.display = 'block';
+  setTimeout(() => section.scrollIntoView({behavior:'smooth',block:'start'}), 100);
+
+  const risk = data.risk_score;
+  document.getElementById('riskVal').textContent   = risk;
+  document.getElementById('riskLabel').textContent = risk >= 70 ? 'High Risk' : risk >= 40 ? 'Moderate Risk' : 'Conservative';
+
+  const fmt = v => '₹' + Number(v).toLocaleString('en-IN', {maximumFractionDigits:0});
+  document.getElementById('expectedVal').textContent = fmt(data.stress_test['Expected Value']);
+  document.getElementById('worstVal').textContent    = fmt(data.stress_test['Worst 5% Case']);
+  document.getElementById('bestVal').textContent     = fmt(data.stress_test['Best 5% Case']);
+
+  if (allocationChart) {
+    allocationChart.data.labels = Object.keys(data.allocation);
+    allocationChart.data.datasets[0].data = Object.values(data.allocation);
+    allocationChart.update('active');
+  } else {
+    allocationChart = new Chart(document.getElementById('allocationChart'), {
+      type:'doughnut',
+      data:{labels:Object.keys(data.allocation),datasets:[{data:Object.values(data.allocation),backgroundColor:['#6366f1','#10b981','#f59e0b'],borderColor:'#0d1220',borderWidth:3,hoverOffset:8}]},
+      options:{cutout:'70%',plugins:{legend:{position:'bottom',labels:{color:'#94a3b8',font:{family:'JetBrains Mono',size:11},padding:18}}}}
+    });
+  }
+
+  if (stressChart) {
+    stressChart.data.labels = Object.keys(data.stress_test);
+    stressChart.data.datasets[0].data = Object.values(data.stress_test);
+    stressChart.update('active');
+  } else {
+    stressChart = new Chart(document.getElementById('stressChart'), {
+      type:'bar',
+      data:{labels:Object.keys(data.stress_test),datasets:[{data:Object.values(data.stress_test),backgroundColor:['#6366f1','#ef4444','#10b981'],borderRadius:8,borderSkipped:false}]},
+      options:{responsive:true,maintainAspectRatio:false,plugins:{legend:{display:false}},scales:{x:{ticks:{color:'#64748b',font:{family:'JetBrains Mono',size:11}},grid:{color:'rgba(255,255,255,0.03)'}},y:{ticks:{color:'#64748b',font:{family:'JetBrains Mono',size:11},callback:v=>'₹'+(v/1000).toFixed(0)+'k'},grid:{color:'rgba(255,255,255,0.03)'}}}}
+    });
+  }
+
+  const compText = data.compliance || '';
+  const isC = compText.toLowerCase().includes('compliant') && !compText.toLowerCase().includes('not compliant');
+  const sEl = document.getElementById('complianceStatus');
+  sEl.textContent = isC ? '✓ Compliant' : '✗ Not Compliant';
+  sEl.className   = 'compliance-status ' + (isC ? 'status-compliant' : 'status-noncompliant');
+  document.getElementById('complianceText').textContent  = compText;
+  document.getElementById('explanationText').textContent = data.explanation;
+
+  const ll = document.getElementById('logsList');
+  ll.innerHTML = '';
+  (data.logs || []).forEach((log, i) => {
+    const item = document.createElement('div');
+    item.className = 'log-item';
+    item.style.animationDelay = (i * 60) + 'ms';
+    item.innerHTML = `<span class="log-num">${String(i+1).padStart(2,'0')}</span><span>${esc(log)}</span>`;
+    ll.appendChild(item);
+  });
+}
+
+// ── Copy results ──────────────────────────────────────────────────────
+function copyResults() {
+  if (!lastResult) return;
+  const text = [
+    `Capital Compass AI — Portfolio Analysis`,
+    `─────────────────────────────`,
+    `Risk Score:     ${lastResult.risk_score}`,
+    `Allocation:     Stocks ${lastResult.allocation?.Stocks}% | Bonds ${lastResult.allocation?.Bonds}% | Cash ${lastResult.allocation?.Cash}%`,
+    `Expected Value: ₹${Number(lastResult.stress_test?.['Expected Value']).toLocaleString('en-IN')}`,
+    `Worst 5% Case:  ₹${Number(lastResult.stress_test?.['Worst 5% Case']).toLocaleString('en-IN')}`,
+    `Best 5% Case:   ₹${Number(lastResult.stress_test?.['Best 5% Case']).toLocaleString('en-IN')}`,
+    `─────────────────────────────`,
+    `Compliance: ${lastResult.compliance}`,
+    `─────────────────────────────`,
+    `Explanation: ${lastResult.explanation}`
+  ].join('\n');
+  navigator.clipboard.writeText(text).then(() => showToast('✓ Results copied to clipboard!'));
+}
+
+// ── Export PDF ────────────────────────────────────────────────────────
+async function exportPDF() {
+  if (!lastResult) return;
+  const btn = document.getElementById('pdfBtn');
+  btn.disabled = true; btn.textContent = '⏳ Generating…';
+  try {
+    const { jsPDF } = window.jspdf;
+    const doc = new jsPDF({ orientation:'portrait', unit:'mm', format:'a4' });
+    const r = lastResult;
+    const fmt = v => 'Rs. ' + Number(v).toLocaleString('en-IN', {maximumFractionDigits:0});
+    const risk = r.risk_score;
+    const rl = risk >= 70 ? 'High Risk' : risk >= 40 ? 'Moderate Risk' : 'Conservative';
+    const compText = r.compliance || '';
+    const isC = compText.toLowerCase().includes('compliant') && !compText.toLowerCase().includes('not compliant');
+    const now = new Date().toLocaleDateString('en-IN', {day:'2-digit',month:'short',year:'numeric'});
+    const W = 210; const margin = 18; const contentW = W - margin * 2; let y = 18;
+    const hr = yPos => { doc.setLineWidth(0.3); doc.setDrawColor(180,180,180); doc.line(margin, yPos, W-margin, yPos); };
+    const sectionTitle = (text, yPos) => { doc.setFontSize(8); doc.setFont('helvetica','bold'); doc.setTextColor(100,116,139); doc.text(text.toUpperCase(), margin, yPos); hr(yPos+2); return yPos+8; };
+    const wrappedText = (text, yPos, size=10, color=[71,85,105]) => { doc.setFontSize(size); doc.setFont('helvetica','normal'); doc.setTextColor(...color); const lines = doc.splitTextToSize(String(text||''), contentW); doc.text(lines, margin, yPos); return yPos + lines.length*(size*0.4+1.2)+2; };
+    doc.setFillColor(99,102,241); doc.rect(0,0,W,12,'F');
+    doc.setFontSize(11); doc.setFont('helvetica','bold'); doc.setTextColor(255,255,255);
+    doc.text('CAPITAL COMPASS AI', margin, 8);
+    doc.setFontSize(9); doc.setFont('helvetica','normal');
+    doc.text('Portfolio Analysis Report', W-margin, 8, {align:'right'});
+    y=22;
+    doc.setFontSize(16); doc.setFont('helvetica','bold'); doc.setTextColor(15,23,42);
+    doc.text('Portfolio Report', margin, y); y+=7;
+    doc.setFontSize(9); doc.setFont('helvetica','normal'); doc.setTextColor(100,116,139);
+    doc.text(`Generated: ${now}`, margin, y); y+=10;
+    hr(y); y+=8;
+    y = sectionTitle('Risk Profile', y);
+    const boxW = (contentW-9)/4;
+    const boxes = [{label:'Risk Score',value:String(risk),color:[99,102,241]},{label:'Risk Level',value:rl,color:[71,85,105]},{label:'Expected Value',value:fmt(r.stress_test['Expected Value']),color:[22,163,74]},{label:'Worst 5%',value:fmt(r.stress_test['Worst 5% Case']),color:[220,38,38]}];
+    boxes.forEach((b,i) => { const bx=margin+i*(boxW+3); doc.setFillColor(248,250,252); doc.setDrawColor(226,232,240); doc.setLineWidth(0.3); doc.roundedRect(bx,y,boxW,18,2,2,'FD'); doc.setFontSize(7); doc.setFont('helvetica','normal'); doc.setTextColor(148,163,184); doc.text(b.label.toUpperCase(),bx+3,y+5); doc.setFontSize(b.value.length>10?8:11); doc.setFont('helvetica','bold'); doc.setTextColor(...b.color); doc.text(b.value,bx+3,y+13); });
+    y+=24;
+    doc.setFontSize(9); doc.setFont('helvetica','normal'); doc.setTextColor(71,85,105);
+    doc.text(`Best 5% Case: ${fmt(r.stress_test['Best 5% Case'])}`, margin, y); y+=10;
+    y = sectionTitle('Asset Allocation', y);
+    let px = margin;
+    [{label:`Stocks: ${r.allocation?.Stocks}%`,bg:[239,246,255],fg:[99,102,241]},{label:`Bonds: ${r.allocation?.Bonds}%`,bg:[240,253,244],fg:[22,163,74]},{label:`Cash: ${r.allocation?.Cash}%`,bg:[255,251,235],fg:[217,119,6]}].forEach(p => { const pw=doc.getTextWidth(p.label)+10; doc.setFillColor(...p.bg); doc.setDrawColor(...p.fg); doc.setLineWidth(0.3); doc.roundedRect(px,y-4,pw,8,2,2,'FD'); doc.setFontSize(9); doc.setFont('helvetica','bold'); doc.setTextColor(...p.fg); doc.text(p.label,px+5,y+1); px+=pw+4; });
+    y+=12;
+    y = sectionTitle('Compliance Review', y);
+    const bColor=isC?[240,253,244]:[254,242,242]; const bText=isC?'✓  COMPLIANT':'✗  NOT COMPLIANT'; const bFg=isC?[22,163,74]:[220,38,38];
+    const bw=doc.getTextWidth(bText)+12; doc.setFillColor(...bColor); doc.setDrawColor(...bFg); doc.setLineWidth(0.3); doc.roundedRect(margin,y-4,bw,8,2,2,'FD'); doc.setFontSize(9); doc.setFont('helvetica','bold'); doc.setTextColor(...bFg); doc.text(bText,margin+6,y+1); y+=10;
+    y = wrappedText(compText, y, 9, [71,85,105]);
+    y = sectionTitle('AI Explanation', y);
+    y = wrappedText(r.explanation||'', y, 9, [71,85,105]);
+    const pageH = doc.internal.pageSize.getHeight();
+    doc.setFillColor(99,102,241); doc.rect(0,pageH-10,W,10,'F');
+    doc.setFontSize(7); doc.setFont('helvetica','normal'); doc.setTextColor(255,255,255);
+    doc.text('Capital Compass AI — Intelligent Portfolio Systems', margin, pageH-4);
+    doc.text('LangGraph · ChromaDB · yfinance · Flask', W-margin, pageH-4, {align:'right'});
+    doc.save(`portfolio-report-${Date.now()}.pdf`);
+    showToast('✓ PDF downloaded!');
+  } catch(e) {
+    showToast('PDF export failed: ' + e.message, '#ef4444');
+    console.error(e);
+  }
+  btn.disabled = false; btn.textContent = '⬇️ Export PDF';
+}
+
+// ── History ───────────────────────────────────────────────────────────
+async function loadHistory() {
+  const listEl = document.getElementById('historyList');
+  const emptyEl = document.getElementById('historyEmpty');
+  const loadingEl = document.getElementById('historyLoading');
+  const errorEl = document.getElementById('historyError');
+  listEl.innerHTML = ''; emptyEl.style.display='none'; errorEl.style.display='none'; loadingEl.style.display='block';
+  try {
+    const res = await fetch("/api/history");
+    loadingEl.style.display = 'none';
+    if (!res.ok) { errorEl.style.display='block'; return; }
+    const data = await res.json();
+    document.getElementById('historyCount').textContent = data.count;
+    if (!data.portfolios || data.portfolios.length===0) { emptyEl.style.display='block'; return; }
+    data.portfolios.forEach(p => listEl.appendChild(buildCard(p)));
+  } catch(e) {
+    loadingEl.style.display='none'; errorEl.style.display='block';
+  }
+}
+
+function buildCard(p) {
+  const risk=p.risk_score, rc=risk>=70?'rh':risk>=40?'rm':'rl', rl=risk>=70?'High Risk':risk>=40?'Moderate':'Conservative';
+  const isC=(p.compliance||'').toLowerCase().includes('compliant')&&!(p.compliance||'').toLowerCase().includes('not compliant');
+  const alloc=p.allocation||{}, stress=p.stress_test||{}, prof=p.profile||{};
+  const dt=new Date(p.created_at), ds=isNaN(dt)?p.created_at:dt.toLocaleString('en-IN',{day:'2-digit',month:'short',year:'numeric',hour:'2-digit',minute:'2-digit'});
+  const fmt=v=>v?'₹'+Number(v).toLocaleString('en-IN',{maximumFractionDigits:0}):'—';
+  const card=document.createElement('div'); card.className='hcard';
+  card.innerHTML=`
+    <div class="hcard-top">
+      <div class="hcard-meta"><div class="hcard-date">📅 ${esc(ds)}</div><div class="hcard-id">ID #${esc(String(p.id))}</div></div>
+      <div class="hcard-badges">
+        <span class="rbadge ${rc}">Risk: ${esc(String(risk))} — ${esc(rl)}</span>
+        <span class="cbadge ${isC?'cbc':'cbn'}">${isC?'✓ Compliant':'✗ Non-Compliant'}</span>
+      </div>
+    </div>
+    <div class="halloc">
+      <span class="apill as">Stocks ${esc(String(alloc.Stocks||0))}%</span>
+      <span class="apill ab">Bonds ${esc(String(alloc.Bonds||0))}%</span>
+      <span class="apill ac">Cash ${esc(String(alloc.Cash||0))}%</span>
+    </div>
+    <div class="hgrid">
+      <div class="hstat"><div class="hstat-lbl">Expected Value</div><div class="hstat-val" style="color:var(--green)">${esc(fmt(stress['Expected Value']))}</div></div>
+      <div class="hstat"><div class="hstat-lbl">Worst 5% Case</div><div class="hstat-val" style="color:var(--danger)">${esc(fmt(stress['Worst 5% Case']))}</div></div>
+      <div class="hstat"><div class="hstat-lbl">Best 5% Case</div><div class="hstat-val" style="color:var(--green)">${esc(fmt(stress['Best 5% Case']))}</div></div>
+      <div class="hstat"><div class="hstat-lbl">Age / Horizon</div><div class="hstat-val" style="color:var(--text3);font-size:14px">${esc(String(prof.age||'—'))}yr / ${esc(String(prof.years||'—'))}yr</div></div>
+    </div>
+    <div class="hactions">
+      <button class="btn-exp" onclick="toggleDetail(${p.id},this)">View Explanation</button>
+      <button class="btn-del" id="delbtn-${p.id}" onclick="askDelete(${p.id})">Delete</button>
+    </div>
+    <div class="hdetail" id="detail-${p.id}">
+      <div class="dlbl">AI Explanation</div><p>${esc(p.explanation||'No explanation saved.')}</p>
+      <div class="dlbl">Compliance Review</div><p style="white-space:pre-wrap">${esc(p.compliance||'No compliance data.')}</p>
+    </div>`;
+  return card;
+}
+
+function toggleDetail(id,btn) {
+  const el=document.getElementById('detail-'+id); el.classList.toggle('open');
+  btn.textContent=el.classList.contains('open')?'Hide Details':'View Explanation';
+}
+
+function askDelete(id) {
+  const btn=document.getElementById('delbtn-'+id);
+  if(btn.dataset.confirming==='1') return;
+  btn.dataset.confirming='1'; btn.className='btn-del-confirm'; btn.textContent='Tap again to confirm';
+  setTimeout(()=>{ if(btn.dataset.confirming==='1'){ btn.dataset.confirming='0'; btn.className='btn-del'; btn.textContent='Delete'; } },3000);
+  btn.onclick=()=>doDelete(id);
+}
+
+async function doDelete(id) {
+  const res=await fetch(`/api/history/${id}`,{method:"DELETE"});
+  if(res.ok) {
+    const card=document.getElementById('delbtn-'+id).closest('.hcard');
+    card.style.opacity='0'; card.style.transform='translateY(-8px)'; card.style.transition='all 0.3s';
+    setTimeout(()=>{ card.remove(); const count=document.querySelectorAll('.hcard').length; document.getElementById('historyCount').textContent=count; if(count===0) document.getElementById('historyEmpty').style.display='block'; },300);
+    showToast('Portfolio deleted.');
+  } else { showToast('Failed to delete. Please try again.','#ef4444'); }
+}
+</script>
+</body>
+</html>
