@@ -22,7 +22,7 @@ relevant state keys — preventing duplicate LLM calls and yfinance fetches.
 ## Prerequisites
 
 - Python 3.11+
-- [Ollama](https://ollama.com) installed and running locally
+- Ollama installed and running locally
 
 ### Pull required Ollama models
 
@@ -46,8 +46,8 @@ cd paradise
 
 ```bash
 python -m venv venv
-source venv/bin/activate      # macOS / Linux
-venv\Scripts\activate         # Windows
+source venv/bin/activate
+venv\Scripts\activate
 ```
 
 ### 3. Install dependencies
@@ -68,7 +68,7 @@ Edit `.env` and set a strong `SECRET_KEY`:
 python -c "import secrets; print(secrets.token_hex(32))"
 ```
 
-Paste the output as the value of `SECRET_KEY` in your `.env` file:
+Example:
 
 ```
 SECRET_KEY=your-generated-key-here
@@ -81,28 +81,28 @@ FLASK_DEBUG=0
 python app.py
 ```
 
-Open [http://localhost:5000](http://localhost:5000) in your browser.
+Open:
 
-> **Note:** On first run, the compliance RAG vectorstore will be built and
-> persisted to `backend/rag/vectorstore/chroma_compliance_db/`. Subsequent
-> starts load it from disk instantly — no re-embedding.
+```
+http://localhost:5000
+```
 
 ---
 
 ## API Endpoints
 
 | Method | Endpoint | Description |
-|--------|----------|-------------|
+|----------|----------|----------|
 | POST | `/api/register` | Register a new user |
 | POST | `/api/login` | Log in |
 | POST | `/api/logout` | Log out |
-| GET  | `/api/login-check` | Check session status |
-| POST | `/api/generate` | Generate portfolio (standard) |
-| POST | `/api/generate/stream` | Generate portfolio with SSE real-time progress |
-| GET  | `/api/history` | Get portfolio history for logged-in user |
-| DELETE | `/api/history/<id>` | Delete a portfolio record |
+| GET | `/api/login-check` | Check session status |
+| POST | `/api/generate` | Generate portfolio |
+| POST | `/api/generate/stream` | Generate portfolio with SSE progress |
+| GET | `/api/history` | Get portfolio history |
+| DELETE | `/api/history/<id>` | Delete portfolio record |
 
-### `/api/generate` — request body
+### Sample Request
 
 ```json
 {
@@ -114,72 +114,54 @@ Open [http://localhost:5000](http://localhost:5000) in your browser.
 }
 ```
 
-| Field | Type | Description |
-|-------|------|-------------|
-| `age` | int | Investor age (18–100) |
-| `income` | float | Annual income in rupees |
-| `years` | int | Investment horizon in years (1–50) |
-| `loss` | int | Risk tolerance (1 = very low, 10 = very high) |
-| `amount` | float | Total investment amount in rupees |
-
 ---
 
 ## Project Structure
 
 ```
 paradise/
-├── app.py                          # Flask app, routes, SSE streaming, scheduler
-├── .env                            # Environment variables (never commit this)
-├── .env.example                    # Template for .env
+├── app.py
+├── .env
+├── .env.example
 ├── requirements.txt
 ├── README.md
-└── backend/
-    ├── graph.py                    # LangGraph pipeline definition
-    ├── state.py                    # AgentState TypedDict
-    ├── llm.py                      # Ollama LLM instance (with timeout)
-    ├── tools.py                    # compute_allocation helper
-    ├── tool_definitions.py         # LangChain @tool definitions (5 tools)
-    ├── risk_engine.py              # calculate_risk_score
-    ├── agents/
-    │   ├── profile_agent.py        # Calculates risk score
-    │   ├── tool_calling_agent.py   # LLM-driven autonomous tool calling
-    │   ├── strategy_agent.py       # Generates asset allocation
-    │   ├── live_data_agent.py      # Fetches live NIFTY 50 data
-    │   ├── simulation_agent.py     # Monte Carlo simulation (1000 runs)
-    │   ├── compliance_agent.py     # RAG-based regulatory validation
-    │   ├── critic_agent.py         # Reviews and adjusts allocation
-    │   └── explanation_agent.py    # Generates plain-language summary
-    ├── rag/
-    │   └── compliance_rag.py       # Chroma vectorstore (persisted on disk)
-    └── compliance_docs/
-        └── investment_guidelines.txt
-frontend/
-    ├── index.html                  # Landing page
-    ├── login.html                  # Login page
-    ├── register.html               # Registration page
-    ├── dashboard.html              # Main dashboard (generate, history, automation)
+├── backend/
+│   ├── graph.py
+│   ├── state.py
+│   ├── llm.py
+│   ├── tools.py
+│   ├── tool_definitions.py
+│   ├── risk_engine.py
+│   ├── agents/
+│   ├── rag/
+│   └── compliance_docs/
+└── frontend/
+    ├── index.html
+    ├── login.html
+    ├── register.html
+    ├── dashboard.html
     └── static/
-        └── finlogo.jpeg
 ```
 
 ---
 
 ## Key Features
 
-- **7-agent LangGraph pipeline** — profile → tool_agent → strategy → live_data → simulation → compliance → critic → explanation
-- **Real-time SSE progress** — live agent-by-agent updates streamed to the dashboard while the pipeline runs
-- **PDF export** — downloads a full portfolio report using pure jsPDF
-- **Monte Carlo simulation** — 1000 iterations using live NIFTY 50 data or historical CSV fallback
-- **RAG compliance validation** — ChromaDB retrieves regulatory guidelines for LLM-based compliance check
-- **Auto-rebalancing** — APScheduler re-runs the full pipeline for all users every 30 days
-- **Rate limiting** — 10/min on login, 5/min on register (flask-limiter)
-- **Auth guard** — all pages check session via `/api/login-check` before rendering
+- 7-agent LangGraph pipeline
+- Autonomous tool calling
+- Real-time SSE progress updates
+- PDF report export
+- Monte Carlo portfolio simulation
+- RAG-based compliance validation
+- Automated portfolio rebalancing
+- Session-based authentication
+- Rate limiting and security controls
 
 ---
 
 ## Performance Notes
 
-- CSV data loaded once at module import (not per request)
-- RAG vectorstore loaded from disk on startup (not rebuilt each time)
-- Downstream agents skip work if `tool_calling_agent` already populated state
-- Ollama LLM configured with 120s timeout and 512 token cap
+- CSV data loaded once at startup
+- RAG vectorstore persisted on disk
+- Duplicate agent work avoided through shared state
+- Ollama configured with timeout protection
