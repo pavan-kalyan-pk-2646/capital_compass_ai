@@ -7,7 +7,12 @@ from langchain_openai import OpenAIEmbeddings
 BASE_DIR = os.path.dirname(os.path.dirname(__file__))
 DOC_PATH = os.path.join(BASE_DIR, "compliance_docs", "investment_guidelines.txt")
 
-PERSIST_DIR = os.path.join(BASE_DIR, "rag", "vectorstore", "chroma_compliance_db")
+# Fix — Vercel's filesystem is read-only except /tmp, and /tmp is wiped
+# between invocations anyway, so there's no real benefit to persisting to
+# disk in this environment. Use /tmp when writable (serverless), otherwise
+# fall back to the local project path for local dev.
+_default_persist_dir = os.path.join(BASE_DIR, "rag", "vectorstore", "chroma_compliance_db")
+PERSIST_DIR = os.path.join("/tmp", "chroma_compliance_db") if os.environ.get("VERCEL") else _default_persist_dir
 
 
 def build_compliance_rag():
@@ -16,7 +21,9 @@ def build_compliance_rag():
 
     # Fix — if the vectorstore already exists on disk, load it directly.
     # This avoids re-embedding the entire document on every server start
-    # (previously took 5–20 s on each startup).
+    # (previously took 5–20 s on each startup). On serverless this will
+    # only ever hit within the same warm container, since /tmp resets
+    # on every cold start.
     if os.path.exists(PERSIST_DIR):
         return Chroma(
             persist_directory=PERSIST_DIR,

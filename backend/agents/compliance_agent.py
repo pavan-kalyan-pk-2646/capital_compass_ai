@@ -1,9 +1,18 @@
 from backend.rag.compliance_rag import build_compliance_rag
 from backend.llm import llm
 
-# build_compliance_rag() now reuses the persisted vectorstore if it exists
-# (no re-embedding on every server start — see compliance_rag.py)
-vectordb = build_compliance_rag()
+# Fix — build_compliance_rag() used to run at import time, which meant a
+# single Chroma/embeddings failure would crash the entire Flask app on
+# startup (every route, not just this agent). Load it lazily on first use
+# instead, and cache it in-process afterward.
+_vectordb = None
+
+
+def _get_vectordb():
+    global _vectordb
+    if _vectordb is None:
+        _vectordb = build_compliance_rag()
+    return _vectordb
 
 
 def compliance_agent(state):
@@ -30,7 +39,7 @@ def compliance_agent(state):
         Age: {age}
         """
 
-        docs    = vectordb.similarity_search(query, k=3)
+        docs    = _get_vectordb().similarity_search(query, k=3)
         context = "\n".join([doc.page_content for doc in docs])
 
         prompt = f"""
