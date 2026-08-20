@@ -1,8 +1,15 @@
-from langchain_ollama import ChatOllama
+import os
+from langchain_openai import ChatOpenAI
 
-# timeout=120  — stops the request hanging if Ollama is slow/unresponsive
-# num_predict=512 — caps token output so explanation/compliance don't run forever
-llm = ChatOllama(model="phi3:mini", timeout=120, num_predict=512)
+# Uses OpenAI's hosted API instead of a local Ollama server, since Vercel's
+# serverless functions have no way to run/host an Ollama model.
+# Set OPENAI_API_KEY in your Vercel project's Environment Variables.
+llm = ChatOpenAI(
+    model="gpt-4o-mini",
+    timeout=120,
+    max_tokens=512,
+    api_key=os.environ.get("OPENAI_API_KEY"),
+)
 
 def generate_response(prompt):
     response = llm.invoke(prompt)
